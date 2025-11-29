@@ -13,14 +13,14 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f3f2f1;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 2rem 1rem;
-            color: #ffffff;
+            color: #323130;
         }
 
         .container {
@@ -38,16 +38,16 @@
 
         header h1 {
             font-size: 2.5rem;
-            font-weight: 700;
+            font-weight: 600;
             margin-bottom: 0.5rem;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            color: #323130;
             letter-spacing: -0.5px;
         }
 
         header p {
             font-size: 1.1rem;
-            opacity: 0.9;
-            font-weight: 300;
+            color: #605e5c;
+            font-weight: 400;
         }
 
         .room-controls {
@@ -58,32 +58,32 @@
         }
 
         .control-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
+            background: #ffffff;
+            border-radius: 4px;
             padding: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #edebe9;
+            box-shadow: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.11);
+            transition: box-shadow 0.2s, border-color 0.2s;
         }
 
         .control-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 3.2px 7.2px rgba(0, 0, 0, 0.13), 0 0.6px 1.8px rgba(0, 0, 0, 0.11);
+            border-color: #c8c6c4;
         }
 
         .control-card h3 {
             font-size: 1.1rem;
             margin-bottom: 1rem;
             font-weight: 600;
+            color: #323130;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
         .control-card h3::before {
-            content: "🎥";
-            font-size: 1.3rem;
+            content: "📹";
+            font-size: 1.2rem;
         }
 
         .control-card.join h3::before {
@@ -97,24 +97,29 @@
         }
 
         input {
-            padding: 0.875rem 1rem;
-            border-radius: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            font-size: 1rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 2px;
+            border: 1px solid #8a8886;
+            background: #ffffff;
+            color: #323130;
+            font-size: 0.875rem;
             transition: all 0.2s;
             outline: none;
         }
 
         input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+            color: #a19f9d;
         }
 
         input:focus {
-            border-color: rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+            border-color: #6264a7;
+            box-shadow: 0 0 0 1px #6264a7;
+        }
+
+        input:disabled {
+            background: #f3f2f1;
+            border-color: #edebe9;
+            color: #a19f9d;
         }
 
         input:disabled {
@@ -123,23 +128,53 @@
         }
 
         button {
-            padding: 0.875rem 1.5rem;
-            border-radius: 12px;
+            padding: 0.375rem 1rem;
+            border-radius: 2px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #6264a7;
             color: white;
-            font-size: 1rem;
+            font-size: 0.875rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            text-transform: none;
+            letter-spacing: 0;
+            min-height: 32px;
         }
 
         button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            background: #464eb8;
+        }
+
+        button:active:not(:disabled) {
+            background: #3b42a0;
+        }
+
+        button:disabled {
+            background: #edebe9;
+            color: #a19f9d;
+            cursor: not-allowed;
+        }
+
+        button.end-call {
+            background: #d13438;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.11);
+        }
+
+        button.end-call:hover:not(:disabled) {
+            background: #c02c30;
+        }
+
+        button.end-call.active {
+            display: block;
         }
 
         button:active:not(:disabled) {
@@ -155,17 +190,18 @@
         #status {
             text-align: center;
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 500;
+            background: #ffffff;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 400;
             min-height: 3rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid #edebe9;
             transition: all 0.3s;
+            color: #323130;
+            box-shadow: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.11);
         }
 
         #status:not(:empty) {
@@ -186,30 +222,19 @@
 
         .video-wrapper {
             position: relative;
-            border-radius: 20px;
+            border-radius: 4px;
             overflow: hidden;
-            background: rgba(0, 0, 0, 0.3);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            background: #1a1a1a;
+            box-shadow: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.11);
+            border: 1px solid #edebe9;
             aspect-ratio: 16 / 9;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: box-shadow 0.3s;
         }
 
         .video-wrapper:hover {
-            transform: scale(1.02);
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 3.2px 7.2px rgba(0, 0, 0, 0.13), 0 0.6px 1.8px rgba(0, 0, 0, 0.11);
         }
 
-        .video-wrapper::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            z-index: 1;
-            pointer-events: none;
-        }
 
         video {
             width: 100%;
@@ -226,12 +251,12 @@
             left: 1rem;
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(10px);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 2px;
+            font-size: 0.75rem;
             font-weight: 600;
             z-index: 2;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
         }
 
         .video-wrapper.local .video-label::before {
@@ -248,8 +273,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1.1rem;
+            color: #a19f9d;
+            font-size: 0.875rem;
             z-index: 1;
             pointer-events: none;
         }
@@ -266,21 +291,117 @@
             .videos-container {
                 grid-template-columns: 1fr;
             }
+
+            button.end-call {
+                bottom: 1rem;
+                left: 1rem;
+                right: 1rem;
+                width: calc(100% - 2rem);
+                transform: none;
+                padding: 0.875rem 1.5rem;
+            }
         }
 
         .status-connected {
-            background: rgba(34, 197, 94, 0.2);
-            border-color: rgba(34, 197, 94, 0.4);
+            background: #dff6dd;
+            border-color: #107c10;
+            color: #107c10;
         }
 
         .status-waiting {
-            background: rgba(251, 191, 36, 0.2);
-            border-color: rgba(251, 191, 36, 0.4);
+            background: #fff4ce;
+            border-color: #ffaa44;
+            color: #8a8886;
         }
 
         .status-error {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: rgba(239, 68, 68, 0.4);
+            background: #fde7e9;
+            border-color: #d13438;
+            color: #d13438;
+        }
+
+        .translation-box {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 3;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .translation-box.active {
+            display: block;
+        }
+
+        .translation-label {
+            font-size: 0.6875rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.375rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .translation-text {
+            font-size: 0.8125rem;
+            color: #ffffff;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .language-controls {
+            margin-top: 2rem;
+        }
+
+        .language-controls select {
+            padding: 0.5rem 0.75rem;
+            border-radius: 2px;
+            border: 1px solid #8a8886;
+            background: #ffffff;
+            color: #323130;
+            font-size: 0.875rem;
+            width: 100%;
+            outline: none;
+            cursor: pointer;
+            min-height: 32px;
+        }
+
+        .language-controls select:focus {
+            border-color: #6264a7;
+            box-shadow: 0 0 0 1px #6264a7;
+        }
+
+        .language-controls select option {
+            background: #ffffff;
+            color: #323130;
+        }
+
+        .language-controls label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #323130;
+        }
+
+        .language-controls input[type="checkbox"] {
+            margin-right: 0.5rem;
+            width: auto;
+            cursor: pointer;
+            accent-color: #6264a7;
+        }
+
+        .language-controls input[type="checkbox"] + label {
+            display: inline;
+            cursor: pointer;
+            font-weight: 400;
         }
     </style>
 </head>
@@ -315,12 +436,53 @@
             <div class="video-wrapper local">
                 <video id="localVideo" autoplay playsinline muted></video>
                 <div class="video-label">You</div>
+                <div class="translation-box" id="localTranslation">
+                    <div class="translation-label">Your speech:</div>
+                    <div class="translation-text" id="localTranslationText"></div>
+                </div>
             </div>
             <div class="video-wrapper remote">
                 <video id="remoteVideo" autoplay playsinline></video>
                 <div class="video-label">Peer</div>
+                <div class="translation-box" id="remoteTranslation">
+                    <div class="translation-label">Translated:</div>
+                    <div class="translation-text" id="remoteTranslationText"></div>
+                </div>
             </div>
         </div>
+
+        <div class="language-controls">
+            <div class="control-card">
+                <h3>Language Settings</h3>
+                <div class="input-group">
+                    <label for="targetLanguage">Translate to:</label>
+                    <select id="targetLanguage">
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="zh">Chinese</option>
+                        <option value="ar">Arabic</option>
+                        <option value="hi">Hindi</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <input type="checkbox" id="enableTranslation" checked>
+                        Enable Speech Translation
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <button id="endCallButton" class="end-call">
+            <span style="margin-right: 0.5rem;">📞</span>
+            End Call
+        </button>
     </div>
 
     <script src="main.js"></script>

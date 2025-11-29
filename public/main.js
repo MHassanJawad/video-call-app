@@ -5,6 +5,19 @@ const joinRoomButton = document.getElementById('joinRoomButton');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 const statusEl = document.getElementById('status');
+const localTranslationText = document.getElementById('localTranslationText');
+const remoteTranslationText = document.getElementById('remoteTranslationText');
+const localTranslation = document.getElementById('localTranslation');
+const remoteTranslation = document.getElementById('remoteTranslation');
+const targetLanguageSelect = document.getElementById('targetLanguage');
+const enableTranslationCheckbox = document.getElementById('enableTranslation');
+const endCallButton = document.getElementById('endCallButton');
+
+// Defensive check for required elements
+if (!localTranslationText || !remoteTranslationText || !localTranslation || 
+    !remoteTranslation || !targetLanguageSelect || !enableTranslationCheckbox) {
+    console.warn('Some translation UI elements are missing');
+}
 
 let ws = null;
 let pc = null;
@@ -14,6 +27,14 @@ let hasReady = false;
 let joined = false;
 let candidateQueue = [];
 let remoteDescriptionSet = false;
+let currentRoomId = null;
+let userId = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let transcriptionInterval = null;
+let myDetectedLanguage = null;
+let peerDetectedLanguage = null;
 
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -54,12 +75,34 @@ function createPeerConnection() {
         console.log('ICE connection state changed:', state);
         if (state === 'connected' || state === 'completed') {
             setStatus('✅ Connected. Streaming media...', 'connected');
+            // Show end call button
+            if (endCallButton) {
+                endCallButton.classList.add('active');
+            }
+            // Start audio recording for transcription when connected
+            if (enableTranslationCheckbox && enableTranslationCheckbox.checked) {
+                startAudioRecording();
+            }
         } else if (state === 'disconnected') {
+            stopAudioRecording();
+            // Hide end call button
+            if (endCallButton) {
+                endCallButton.classList.remove('active');
+            }
             setStatus('⚠️ Peer disconnected.', 'error');
         } else if (state === 'failed') {
             setStatus('❌ Connection failed.', 'error');
+            // Hide end call button
+            if (endCallButton) {
+                endCallButton.classList.remove('active');
+            }
         } else if (state === 'checking') {
             setStatus('🔄 Establishing connection...', 'waiting');
+        } else if (state === 'closed') {
+            // Hide end call button
+            if (endCallButton) {
+                endCallButton.classList.remove('active');
+            }
         }
     };
 
@@ -110,6 +153,10 @@ function connectWebSocket(roomId) {
         } catch {
             return;
         }
+
+        // Generate unique user ID
+        userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        currentRoomId = roomId;
 
         const joinMsg = JSON.stringify({
             type: 'join',
@@ -248,6 +295,14 @@ function connectWebSocket(roomId) {
                 candidateQueue = [];
                 
                 setStatus('✅ Connected. Streaming media...', 'connected');
+                // Show end call button
+                if (endCallButton) {
+                    endCallButton.classList.add('active');
+                }
+                // Start audio recording for transcription when connected
+                if (enableTranslationCheckbox && enableTranslationCheckbox.checked) {
+                    startAudioRecording();
+                }
             } catch (err) {
                 console.error('Error handling answer', err);
                 setStatus('❌ Error processing answer: ' + err.message, 'error');
@@ -277,17 +332,259 @@ function connectWebSocket(roomId) {
             }
             return;
         }
+
+        if (type === 'translation') {
+            console.log('Received translation from peer');
+            if (data.translatedText) {
+                displayRemoteTranslation(data.translatedText);
+            }
+            if (data.detectedLanguage) {
+                peerDetectedLanguage = data.detectedLanguage;
+            }
+            return;
+        }
     };
 
     ws.onclose = (event) => {
         console.log('WebSocket closed:', event.code, event.reason);
         setStatus('❌ Connection lost.', 'error');
+        stopAudioRecording();
     };
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setStatus('❌ Connection error.', 'error');
     };
+}
+
+// Speech-to-text and translation functions
+function startAudioRecording() {
+    if (!localStream || isRecording) return;
+    
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+        console.warn('No audio track available');
+        return;
+    }
+
+    try {
+        // Create a new stream with just the audio track
+        const audioStream = new MediaStream(audioTracks);
+        
+        // Use MediaRecorder to capture audio
+        const options = {
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 128000
+        };
+
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options.mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'audio/ogg;codecs=opus';
+            }
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, options);
+        audioChunks = [];
+        isRecording = true;
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            if (audioChunks.length === 0) return;
+            
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            await processAudioForTranscription(audioBlob);
+            audioChunks = [];
+        };
+
+        // Record in chunks (every 3 seconds)
+        mediaRecorder.start();
+        console.log('Audio recording started');
+
+        // Stop and restart every 3 seconds to process chunks
+        transcriptionInterval = setInterval(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                setTimeout(() => {
+                    if (isRecording && localStream) {
+                        const audioTracks = localStream.getAudioTracks();
+                        if (audioTracks.length > 0) {
+                            const audioStream = new MediaStream(audioTracks);
+                            mediaRecorder = new MediaRecorder(audioStream, options);
+                            audioChunks = [];
+                            mediaRecorder.ondataavailable = (event) => {
+                                if (event.data.size > 0) {
+                                    audioChunks.push(event.data);
+                                }
+                            };
+                            mediaRecorder.onstop = async () => {
+                                if (audioChunks.length === 0) return;
+                                const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                                await processAudioForTranscription(audioBlob);
+                                audioChunks = [];
+                            };
+                            mediaRecorder.start();
+                        }
+                    }
+                }, 100);
+            }
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error starting audio recording:', error);
+    }
+}
+
+function stopAudioRecording() {
+    isRecording = false;
+    if (transcriptionInterval) {
+        clearInterval(transcriptionInterval);
+        transcriptionInterval = null;
+    }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    mediaRecorder = null;
+    audioChunks = [];
+}
+
+async function processAudioForTranscription(audioBlob) {
+    if (!enableTranslationCheckbox.checked || !currentRoomId) return;
+
+    try {
+        // Convert blob to base64
+        const reader = new FileReader();
+        const audioBase64 = await new Promise((resolve, reject) => {
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(audioBlob);
+        });
+
+        // Send to server for transcription
+        const response = await fetch('/api/speech-to-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                audioData: audioBase64,
+                roomId: currentRoomId,
+                userId: userId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Speech-to-text request failed');
+        }
+
+        const result = await response.json();
+        
+        if (result.transcript && result.transcript.trim().length > 0) {
+            console.log('Transcribed:', result.transcript);
+            console.log('Detected language:', result.detectedLanguage);
+            
+            myDetectedLanguage = result.detectedLanguage;
+            displayLocalTranslation(result.transcript);
+
+            // Translate to target language
+            const targetLanguage = targetLanguageSelect.value;
+            if (targetLanguage && result.transcript) {
+                await translateAndSend(result.transcript, targetLanguage, result.detectedLanguage);
+            }
+        }
+    } catch (error) {
+        console.error('Error processing audio:', error);
+    }
+}
+
+// Convert 5-letter language code (en-US) to 2-letter (en)
+function convertLanguageCode(langCode) {
+    if (!langCode) return 'en';
+    const parts = langCode.split('-');
+    return parts[0];
+}
+
+async function translateAndSend(text, targetLanguage, sourceLanguage) {
+    try {
+        // Convert source language from 5-letter to 2-letter code if needed
+        const sourceLang = convertLanguageCode(sourceLanguage);
+        
+        const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                targetLanguage: targetLanguage,
+                sourceLanguage: sourceLang, // Optional, helps with accuracy
+                roomId: currentRoomId,
+                userId: userId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Translation request failed');
+        }
+
+        const result = await response.json();
+        
+        if (result.translatedText) {
+            console.log('Translated:', result.translatedText);
+            
+            // Send translation to peer via WebSocket
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'translation',
+                    translatedText: result.translatedText,
+                    originalText: text,
+                    sourceLanguage: sourceLanguage,
+                    targetLanguage: targetLanguage,
+                    detectedLanguage: sourceLanguage
+                }));
+            }
+        }
+    } catch (error) {
+        console.error('Error translating text:', error);
+    }
+}
+
+function displayLocalTranslation(text) {
+    if (!localTranslationText || !localTranslation) return;
+    if (text && text.trim()) {
+        localTranslationText.textContent = text;
+        localTranslation.classList.add('active');
+        
+        // Auto-hide after 5 seconds if no new text
+        setTimeout(() => {
+            if (localTranslationText && localTranslationText.textContent === text) {
+                localTranslation.classList.remove('active');
+            }
+        }, 5000);
+    }
+}
+
+function displayRemoteTranslation(text) {
+    if (!remoteTranslationText || !remoteTranslation) return;
+    if (text && text.trim()) {
+        remoteTranslationText.textContent = text;
+        remoteTranslation.classList.add('active');
+        
+        // Auto-hide after 5 seconds if no new text
+        setTimeout(() => {
+            if (remoteTranslationText && remoteTranslationText.textContent === text) {
+                remoteTranslation.classList.remove('active');
+            }
+        }, 5000);
+    }
 }
 
 createRoomButton.addEventListener('click', () => {
@@ -321,5 +618,115 @@ joinRoomButton.addEventListener('click', () => {
     setStatus(`Joining room ${roomId}...`, 'waiting');
     connectWebSocket(roomId);
 });
+
+// Handle translation toggle
+if (enableTranslationCheckbox) {
+    enableTranslationCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked && pc && (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed')) {
+            startAudioRecording();
+        } else {
+            stopAudioRecording();
+            if (localTranslation) localTranslation.classList.remove('active');
+            if (remoteTranslation) remoteTranslation.classList.remove('active');
+        }
+    });
+}
+
+// Handle target language change
+if (targetLanguageSelect) {
+    targetLanguageSelect.addEventListener('change', () => {
+        // Language preference updated
+        console.log('Target language changed to:', targetLanguageSelect.value);
+    });
+}
+
+// End call function
+function endCall() {
+    console.log('Ending call...');
+    
+    // Stop audio recording
+    stopAudioRecording();
+    
+    // Close peer connection
+    if (pc) {
+        pc.getSenders().forEach(sender => {
+            if (sender.track) {
+                sender.track.stop();
+            }
+        });
+        pc.getReceivers().forEach(receiver => {
+            if (receiver.track) {
+                receiver.track.stop();
+            }
+        });
+        pc.close();
+        pc = null;
+    }
+    
+    // Stop local media stream
+    if (localStream) {
+        localStream.getTracks().forEach(track => {
+            track.stop();
+        });
+        localStream = null;
+    }
+    
+    // Clear video elements
+    if (localVideo) {
+        localVideo.srcObject = null;
+    }
+    if (remoteVideo) {
+        remoteVideo.srcObject = null;
+    }
+    
+    // Close WebSocket connection
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+    
+    // Reset state
+    hasReady = false;
+    joined = false;
+    candidateQueue = [];
+    remoteDescriptionSet = false;
+    currentRoomId = null;
+    userId = null;
+    myDetectedLanguage = null;
+    peerDetectedLanguage = null;
+    
+    // Hide end call button
+    if (endCallButton) {
+        endCallButton.classList.remove('active');
+    }
+    
+    // Clear translation boxes
+    if (localTranslation) localTranslation.classList.remove('active');
+    if (remoteTranslation) remoteTranslation.classList.remove('active');
+    if (localTranslationText) localTranslationText.textContent = '';
+    if (remoteTranslationText) remoteTranslationText.textContent = '';
+    
+    // Re-enable room controls
+    if (createRoomButton) createRoomButton.disabled = false;
+    if (joinRoomButton) joinRoomButton.disabled = false;
+    if (createRoomInput) {
+        createRoomInput.disabled = false;
+        createRoomInput.value = '';
+    }
+    if (joinRoomInput) {
+        joinRoomInput.disabled = false;
+        joinRoomInput.value = '';
+    }
+    
+    // Update status
+    setStatus('Call ended. You can create or join a new room.', '');
+}
+
+// Handle end call button click
+if (endCallButton) {
+    endCallButton.addEventListener('click', () => {
+        endCall();
+    });
+}
 
 
